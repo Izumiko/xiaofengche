@@ -10,11 +10,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Mpv.NET\**" />
+    <EmbeddedResource Remove="Mpv.NET\**" />
+    <None Remove="Mpv.NET\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="icon.ico" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Mpv.NET" Version="1.2.0" />
+    <ProjectReference Include="Mpv.NET\src\Mpv.NET\Mpv.NET.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -33,8 +39,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="mpv\mpv-1.dll">
+    <None Update="mpv\libmpv-2.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="mpv\mpv-1.dll">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
     <None Update="mpv\mpv.conf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

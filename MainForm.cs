@@ -13,7 +13,7 @@ namespace VideoWallpaper
         private MpvPlayer player;
         private IntPtr parentIntPtr = IntPtr.Zero;
         private List<Rectangle> screens = new List<Rectangle>();
-        //string basePath = "D:\\WorkSpace\\PersonalProjects\\VideoWallpaper";
+        //string basePath = "D:\\WorkSpace\\PersonalProjects\\xiaofengche";
         string basePath = "";
 
         public MainForm()
@@ -22,9 +22,10 @@ namespace VideoWallpaper
 
             basePath = Directory.GetCurrentDirectory();
 
-            player = new MpvPlayer(this.Handle, basePath + "\\mpv\\mpv-1.dll")
+            player = new MpvPlayer(this.Handle, basePath + "\\mpv\\libmpv-2.dll")
             {
                 Loop = true,
+                AutoPlay = true,
                 Volume = 0
             };
 
@@ -43,8 +44,7 @@ namespace VideoWallpaper
                 catch { }
                 
                 player.LoadConfig(basePath + "\\mpv\\mpv.conf");
-                player.Load(basePath + "\\wallpaper\\" + lastWallpaper);
-                player.Resume();
+                player.Load(basePath + "\\wallpaper\\" + lastWallpaper, true);
                 Thread.Sleep(1000);
                 Init();
                 SwitchScreen(Int32.Parse(lastScreen));
@@ -119,8 +119,7 @@ namespace VideoWallpaper
         {
             ToolStripItem item = (ToolStripItem)sender;
             await Task.Delay(50);
-            player.Load(basePath + "\\wallpaper\\" + item.Text);
-            player.Resume();
+            player.Load(basePath + "\\wallpaper\\" + item.Text, true);
             File.WriteAllText(basePath + "\\mpv\\wp.txt", item.Text);
         }
 

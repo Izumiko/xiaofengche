@@ -1,0 +1,4 @@
+[submodule "Mpv.NET"]
+	path = Mpv.NET
+	url = https://github.com/hudec117/Mpv.NET-lib-.git
+	branch = dev-v2
