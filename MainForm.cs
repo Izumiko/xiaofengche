@@ -1,16 +1,13 @@
+using Nickvision.MPVSharp;
 using System.Diagnostics;
 using System.Reflection;
-using System.Reflection.Metadata;
-using System.Security.Cryptography;
-using System.Text;
-using System.Windows.Forms;
-using Mpv.NET.Player;
 
 namespace VideoWallpaper
 {
+
     public partial class MainForm : Form
     {
-        private MpvPlayer player;
+        private Client player;
         private IntPtr parentIntPtr = IntPtr.Zero;
         private List<Rectangle> screens = new List<Rectangle>();
         //string basePath = "D:\\WorkSpace\\PersonalProjects\\xiaofengche";
@@ -22,12 +19,8 @@ namespace VideoWallpaper
 
             basePath = Directory.GetCurrentDirectory();
 
-            player = new MpvPlayer(this.Handle, basePath + "\\mpv\\libmpv-2.dll")
-            {
-                Loop = true,
-                AutoPlay = true,
-                Volume = 0
-            };
+            player = new Client();
+            player.SetProperty("wid", this.Handle);
 
             MakeScreenList();
 
@@ -42,12 +35,13 @@ namespace VideoWallpaper
                     lastScreen = File.ReadAllText(basePath + "\\mpv\\s.txt");
                 }
                 catch { }
-                
-                player.LoadConfig(basePath + "\\mpv\\mpv.conf");
-                player.Load(basePath + "\\wallpaper\\" + lastWallpaper, true);
+
+                player.Initialize();
+                player.LoadConfigFile(basePath + "\\mpv\\mpv.conf");
+                player.LoadFile(basePath + "\\wallpaper\\" + lastWallpaper);
                 Thread.Sleep(1000);
                 Init();
-                SwitchScreen(Int32.Parse(lastScreen));
+                SwitchScreen(int.Parse(lastScreen));
 
                 notifyIcon1.Visible = true;
             }
@@ -79,7 +73,6 @@ namespace VideoWallpaper
             foreach (var screen in Screen.AllScreens)
             {
                 ToolStripItem item = new ToolStripMenuItem();
-                //item.Text = "Bounds: " + screen.Bounds.ToString();
                 item.Text = "屏幕 " + i;
                 item.Click += new EventHandler(ss_ItemClick);
                 screens.Add(screen.Bounds);
@@ -110,6 +103,10 @@ namespace VideoWallpaper
 
         public void SwitchScreen(int sid)
         {
+            if (sid >= screens.Count)
+            {
+                sid = 0;
+            }
             WindowState = FormWindowState.Normal;
             Location = screens[sid].Location;
             Size = screens[sid].Size;
@@ -119,7 +116,7 @@ namespace VideoWallpaper
         {
             ToolStripItem item = (ToolStripItem)sender;
             await Task.Delay(50);
-            player.Load(basePath + "\\wallpaper\\" + item.Text, true);
+            player.LoadFile(basePath + "\\wallpaper\\" + item.Text);
             File.WriteAllText(basePath + "\\mpv\\wp.txt", item.Text);
         }
 
@@ -150,7 +147,7 @@ namespace VideoWallpaper
 
         private void siteToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Process.Start(new ProcessStartInfo("https://meta.appinn.net/t/topic/40295/2") { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo("https://meta.appinn.net/t/topic/40295/") { UseShellExecute = true });
         }
 
         private void donateToolStripMenuItem_Click(object sender, EventArgs e)
@@ -195,7 +192,7 @@ namespace VideoWallpaper
         {
             CreateShortcut(basePath + "\\小风车.lnk");
             await Task.Delay(125);
-            string StartupPath = System.Environment.GetFolderPath(System.Environment.SpecialFolder.Startup);
+            string StartupPath = Environment.GetFolderPath(System.Environment.SpecialFolder.Startup);
             if (!File.Exists(StartupPath + @"\小风车.lnk"))
             {
                 File.Move(Directory.GetCurrentDirectory() + @"\小风车.lnk", StartupPath + @"\小风车.lnk");

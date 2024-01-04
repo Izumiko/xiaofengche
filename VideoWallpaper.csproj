@@ -2,11 +2,12 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net6.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.17763.0</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>icon.ico</ApplicationIcon>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="Mpv.NET\src\Mpv.NET\Mpv.NET.csproj" />
+    <PackageReference Include="Nickvision.MPVSharp" Version="2023.9.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -39,11 +40,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="mpv\libmpv-2.dll">
+    <None Update="libmpv-2.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="mpv\mpv-1.dll">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
     <None Update="mpv\mpv.conf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
