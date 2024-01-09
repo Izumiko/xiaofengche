@@ -5,11 +5,10 @@
 
 ## 系统要求
 
-- Windows 10 1809以上
-- .Net 8
+- Windows 7以上
 
 ## 开发说明
 
-编译前请先下载[libmpv](https://sourceforge.net/projects/mpv-player-windows/files/libmpv/)，一般选择`mpv-dev-x86_64-v3-xxxx.7z`即可。
+编译前请先下载[aardio](https://www.aardio.com/)
 
-解压后把`libmpv-2.dll`放入项目目录，然后进行开发和发布。
+解压后，打开default.aproj，然后进行开发和发布。

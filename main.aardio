@@ -1,0 +1,195 @@
+import win.ui;
+/*DSG{{*/
+var winform = win.form(text="VideoWallpaper";right=1279;bottom=719;bgcolor=16515070;border="none";exmode="toolwindow";max=false;min=false;mode="popup";parent=...;sysmenu=false;title=false)
+winform.add(
+video={cls="custom";left=0;top=0;right=1280;bottom=720;ah=1;aw=1;bgcolor=0;db=1;dl=1;dr=1;dt=1;z=1}
+)
+/*}}*/
+
+var basePath = io._exedir
+
+//加载MPV播放器
+import mpvPlayer;
+var mplayer = mpvPlayer(winform.video);
+
+//配置参数文档：http://mpv.io/manual/master/#options
+mplayer.setOption("panscan","1.0");
+mplayer.setOption("no-osc","");
+mplayer.setOption("aid","no");
+mplayer.setOption("sid","no");
+mplayer.setOption("hwdec","auto");
+mplayer.setOption("gpu-api","d3d11");
+mplayer.setOption("loop-file","inf");
+mplayer.setOption("input-default-bindings","no");
+
+//获取屏幕信息
+import sys.monitor
+var screens = {};
+var count = 0;
+var xmin = 0;
+var ymin = 0;
+for( hMonitor,monitorInfo in sys.monitor.eachInfo() ){ //枚举显示器
+	if(monitorInfo){        
+        var idx = -1/*_ENUM_CURRENT_SETTINGS*/; //检索显示设备的当前设置
+        var devMode = sys.monitor.DEVMODE_DISPLAY_DEVICE();
+        var flags = 0x2/*_EDS_RAWMODE*/;
+        ::User32.EnumDisplaySettingsExW(monitorInfo.deviceName, idx, devMode, flags);
+        
+        count++;
+        screens[count] = monitorInfo.rcMonitor
+        xmin = monitorInfo.rcMonitor.left < xmin ? monitorInfo.rcMonitor.left : xmin;
+        ymin = monitorInfo.rcMonitor.top < ymin ? monitorInfo.rcMonitor.top : ymin;
+    }
+}
+for(i=1;count) {
+	screens[i].left = screens[i].left - xmin
+	screens[i].right = screens[i].right - xmin
+    screens[i].bottom = screens[i].bottom - ymin
+    screens[i].top = screens[i].top - ymin
+}
+
+//切换屏幕
+function switchScreen(id) {
+	winform.left = screens[id].left
+	winform.right = screens[id].right
+	winform.bottom = screens[id].bottom
+	winform.top = screens[id].top
+}
+
+//切换视频
+function switchVideo(fname) {
+	mplayer.loadFile(fsys.joinpath(basePath,"wallpaper",fname))
+	mplayer.play()
+}
+
+//读取配置文件
+import fsys.ini;
+var ini=fsys.ini(fsys.joinpath(basePath,"cfg.ini"))
+sec = ini.getSection("config")
+var curScreen = 1
+if (#sec.screen) {
+	curScreen = tonumber(sec.screen)
+}
+var curVideo = ""
+if (#sec.video && io.exist(fsys.joinpath(basePath,"wallpaper",sec.video))) {
+	curVideo = sec.video
+} else {
+	fsys.enum(fsys.joinpath(basePath,"wallpaper"),
+    	"*.*",
+    	function(dirname,filename,fullpath,findData){
+        	if(filename){
+            	curVideo = filename
+            	return false; 
+        	}
+    	} , false
+	);
+}
+
+curScreen = curScreen>0 && curScreen<=count ? curScreen : 1
+
+sec.screen = curScreen
+sec.video = curVideo
+sec.save()
+
+switchScreen(curScreen)
+switchVideo(curVideo)
+
+//创建托盘图标和菜单
+import win.util.tray;
+winform.tray = win.util.tray(winform);
+winform.tray.tip = "视频壁纸";
+
+winform.onTrayMessage = {
+	[0x205/*_WM_RBUTTONUP*/  ] = function(wParam){ 
+	    //弹出托盘菜单以前,一定要前置主窗口中,避免不点击菜单不会消失，父窗口隐藏也要这样做
+	    win.setForeground(winform.hwnd)
+
+		/*
+		下面创建托盘弹出菜单。
+		如果程序要开机启动到托盘，最好在这里创建菜单，在用户点击前不要创建菜单，
+		避免系统启动时 DPI 缩放前创建的菜单字体偏小（出现这情况的机率很小）。
+		如果不想重复创建菜单最好写到一个库里，然后在这里 import 即可避免上述问题。
+		*/
+		import win.ui.menu;
+		
+		winform.popmenu = win.ui.popmenu(winform);//创建弹出菜单
+		
+		screenmenu = win.ui.popmenu(winform);
+		for(i=1;count) {
+			screenmenu.add("屏幕"+i,function(){
+				switchScreen(i)
+				sec.screen = i
+				sec.save()
+			})
+		}
+		winform.popmenu.add("屏幕",screenmenu)
+		
+		videomenu = win.ui.popmenu(winform);
+
+		fsys.enum( fsys.joinpath(basePath,"wallpaper"),
+    		"*.*",
+    		function(dirname,filename,fullpath,findData){
+        		if(filename){
+            		videomenu.add(filename,function(){
+						switchVideo(filename)
+						sec.video = filename
+						sec.save()
+					})
+        		}
+    		} , false
+		);
+		winform.popmenu.add("切换壁纸",videomenu)
+		
+		winform.popmenu.add();//分隔线
+		winform.popmenu.add("开机启动",function(){
+			import win.reg;
+			var reg = win.reg("HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Run")
+			reg.setSzValue("VideoWallpaper", '\"' + io._exepath + '\"')
+		})
+		winform.popmenu.add('关于',function(id){ winform.msgOk("视频壁纸 作者：Izumiko") })
+		winform.popmenu.add('退出',function(id){ winform.tray.delete(); winform.close() })
+	    
+	    winform.popmenu.popup();
+	    winform.popmenu.close();
+	};
+	[0x202/*_WM_LBUTTONUP*/] = function(wParam){
+		
+	};
+	[0x203/*_WM_LBUTTONDBLCLK*/] = function(wParam){
+		
+	};
+	[0x404/*_PARAM_DESTROY*/] = function(wParam){
+		
+	};
+	[0x405/*_PARAM_CLICKED*/] = function(wParam){
+		
+	};
+}
+
+//将窗口放置到壁纸位置
+parentIntPtr = ::User32.FindWindow("Progman",null)
+if ( parentIntPtr != 0) {
+	var result = 0;
+	::SendMessageTimeout(parentIntPtr, 0x52c, null, null, 0, 0x3e8, result);
+	enumwndProc = function(hwnd, lparam){
+		if(::User32.FindWindowEx(hwnd, 0, "SHELLDLL_DefView", null) != 0) {
+			parentIntPtr = ::User32.FindWindowEx(0, hwnd, "WorkerW", null);
+			::User32.ShowWindow(parentIntPtr, 1);
+		}
+		return 1; 
+	}
+	enumwndProc_c = raw.tostdcall(enumwndProc,"int(int hwnd,int lparam )" ,{tag='crane'} );
+	::User32.EnumWindows(enumwndProc_c, 0);
+	enumwndProc_c = null
+	::User32.SetParent(winform[["hwnd"]] : winform, parentIntPtr);
+}
+
+
+/*
+winform.onDestroy = function(){
+    mplayer.destroy()
+}
+*/
+
+winform.show() 
+win.loopMessage();
