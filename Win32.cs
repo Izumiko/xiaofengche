@@ -1,4 +1,5 @@
 ﻿using System.Runtime.InteropServices;
+using System.Text;
 
 namespace VideoWallpaper
 {
@@ -25,5 +26,11 @@ namespace VideoWallpaper
 
         [DllImport("user32.dll")]
         public static extern IntPtr SetParent(IntPtr hWnd, IntPtr hParent);
+
+        [DllImport("user32.dll")]
+        public static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
     }
 }

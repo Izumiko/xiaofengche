@@ -1,6 +1,7 @@
 using Nickvision.MPVSharp;
 using System.Diagnostics;
 using System.Reflection;
+using System.Text;
 
 namespace VideoWallpaper
 {
@@ -123,26 +124,49 @@ namespace VideoWallpaper
         public void Init()
         {
             parentIntPtr = Win32.FindWindow("Progman", null);
-
-            if (parentIntPtr != IntPtr.Zero)
+            if (parentIntPtr == IntPtr.Zero)
             {
-                IntPtr result = IntPtr.Zero;
-
-                // 向 Program Manager 窗口发送 0x52c 的一个消息，超时设置为0x3e8（1秒）。
-                Win32.SendMessageTimeout(parentIntPtr, 0x52c, IntPtr.Zero, IntPtr.Zero, 0, 0x3e8, result);
-
-                Win32.EnumWindows((hWnd, lParam) =>
-                {
-                    if (Win32.FindWindowEx(hWnd, IntPtr.Zero, "SHELLDLL_DefView", null) != IntPtr.Zero)
-                    {
-                        parentIntPtr = Win32.FindWindowEx(IntPtr.Zero, hWnd, "WorkerW", null);
-                        Win32.ShowWindow(parentIntPtr, 1);
-                    }
-                    return true;
-                }, IntPtr.Zero);
+                return;
             }
 
-            Win32.SetParent(this.Handle, parentIntPtr);
+            IntPtr result = IntPtr.Zero;
+            // 向 Program Manager 窗口发送 0x52c 的一个消息，超时设置为0x3e8（1秒）。
+            _ = Win32.SendMessageTimeout(parentIntPtr, 0x52c, IntPtr.Zero, IntPtr.Zero, 0, 0x3e8, result);
+
+            IntPtr workerwPtr = IntPtr.Zero;
+            _ = Win32.EnumWindows((hWnd, lParam) =>
+            {
+                if (Win32.FindWindowEx(hWnd, IntPtr.Zero, "SHELLDLL_DefView", null) != IntPtr.Zero)
+                {
+                    workerwPtr = Win32.FindWindowEx(IntPtr.Zero, hWnd, "WorkerW", null);
+                    return false;
+                }
+                return true;
+            }, IntPtr.Zero);
+
+            // For Win 11
+            if (workerwPtr == IntPtr.Zero)
+            {
+                IntPtr shelldll_defview = Win32.FindWindowEx(parentIntPtr, IntPtr.Zero, "SHELLDLL_DefView", null);
+                if (shelldll_defview != IntPtr.Zero)
+                {
+                    // 获取 SHELLDLL_DefView 后面的窗口
+                    uint GW_HWNDNEXT = 2;
+                    IntPtr desktopHandle = Win32.GetWindow(shelldll_defview, GW_HWNDNEXT);
+                    if (desktopHandle != IntPtr.Zero)
+                    {
+                        StringBuilder className = new StringBuilder(256);
+                        Win32.GetClassName(desktopHandle, className, className.Capacity);
+                        if (className.ToString() == "WorkerW")
+                        {
+                            workerwPtr = desktopHandle;
+                        }
+                    }
+                }
+            }
+            Win32.ShowWindow(workerwPtr, 1);
+
+            Win32.SetParent(this.Handle, workerwPtr);
         }
 
         private void siteToolStripMenuItem_Click(object sender, EventArgs e)
