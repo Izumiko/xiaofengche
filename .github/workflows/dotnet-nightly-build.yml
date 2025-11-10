@@ -1,0 +1,60 @@
+name: Nightly Build
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches:
+      - master
+      - dotnetcore
+    paths:
+      - '**.cs'
+      - '**.csproj'
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          submodules: true
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '8'
+
+      - name: Restore dependencies
+        run: dotnet restore "VideoWallpaper.sln"
+
+      - name: Build project
+        run: dotnet build "VideoWallpaper.sln" --configuration Release --no-restore
+
+      - name: Publish project
+        run: |
+          dotnet publish "VideoWallpaper.csproj" `
+            --configuration Release `
+            --output ./publish
+
+      - name: Archive production assets
+        run: Compress-Archive -Path ./publish/* -DestinationPath VideoWallpaper-nightly.zip
+
+      - name: Create or Update Nightly Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          name: Nightly Build
+          body: |
+            🧪 Automated nightly build. This release is updated frequently and may be unstable.
+
+            **重要:** 运行此程序前，您必须先在您的 Windows 电脑上安装 [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0/runtime?runtime=desktop)。
+
+            - 需自行去[libmpv](https://sourceforge.net/projects/mpv-player-windows/files/libmpv/)下载`mpv-dev-x86_64-v3-*.7z`，并解压其中的`libmpv-2.dll`到软件根目录。
+            - 视频文件请放置于wallpaper文件夹。
+          prerelease: true
+          files: VideoWallpaper-nightly.zip
