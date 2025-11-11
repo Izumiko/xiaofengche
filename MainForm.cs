@@ -1,27 +1,53 @@
-using Nickvision.MPVSharp;
+﻿using LibVLCSharp.Shared;
+using System;
 using System.Diagnostics;
 using System.Reflection;
-using System.Text;
 
 namespace VideoWallpaper
 {
 
     public partial class MainForm : Form
     {
-        private Client player;
+        public LibVLC _libVLC;
+        public MediaPlayer _mp;
+
         private IntPtr parentIntPtr = IntPtr.Zero;
-        private List<Rectangle> screens = new List<Rectangle>();
-        //string basePath = "D:\\WorkSpace\\PersonalProjects\\xiaofengche";
-        string basePath = "";
+        private readonly List<Rectangle> screens = [];
+        private readonly string basePath = "";
 
         public MainForm()
         {
+            if (!DesignMode)
+            {
+                Core.Initialize();
+            }
+
             InitializeComponent();
 
             basePath = Directory.GetCurrentDirectory();
 
-            player = new Client();
-            player.SetProperty("wid", this.Handle);
+            string configFile = Path.Combine(basePath, "config", "vlc-options.txt");
+            string[] vlcOptions = [];
+
+            if (File.Exists(configFile))
+            {
+                vlcOptions = [.. File.ReadAllLines(configFile).Where(static line => !string.IsNullOrWhiteSpace(line) && !line.Trim().StartsWith('#'))];
+            }
+            else
+            {
+                vlcOptions =
+                [
+                    "--no-audio",            // 关闭音频
+                    "--avcodec-hw=auto",     // 硬件解码
+                    "--no-spu",              // 禁用字幕、OSD渲染
+                    "--no-video-title-show", // 不在视频顶部显示短暂的标题
+                    "--quiet"                // 减少日志输出
+                ];
+            }
+            _libVLC = new LibVLC(vlcOptions);
+            _mp = new MediaPlayer(_libVLC);
+
+            videoView1.MediaPlayer = _mp;
 
             MakeScreenList();
 
@@ -32,14 +58,16 @@ namespace VideoWallpaper
                 string lastScreen = "0";
                 try
                 {
-                    lastWallpaper = File.ReadAllText(basePath + "\\mpv\\wp.txt");
-                    lastScreen = File.ReadAllText(basePath + "\\mpv\\s.txt");
+                    lastWallpaper = File.ReadAllText(basePath + "\\config\\wp.txt");
+                    lastScreen = File.ReadAllText(basePath + "\\config\\s.txt");
                 }
                 catch { }
 
-                player.Initialize();
-                player.LoadConfigFile(basePath + "\\mpv\\mpv.conf");
-                player.LoadFile(basePath + "\\wallpaper\\" + lastWallpaper);
+                var media = new Media(_libVLC, new Uri(basePath + "\\wallpaper\\" + lastWallpaper));
+                media.AddOption(":input-repeat=2147483647");
+                _mp.Play(media);
+                media.Dispose();
+
                 Thread.Sleep(1000);
                 Init();
                 SwitchScreen(int.Parse(lastScreen));
@@ -48,7 +76,7 @@ namespace VideoWallpaper
             }
             else
             {
-                DirectoryInfo directoryInfo = new DirectoryInfo(wallpaperPath);
+                DirectoryInfo directoryInfo = new(wallpaperPath);
                 directoryInfo.Create();
             }
 
@@ -57,13 +85,15 @@ namespace VideoWallpaper
 
         public void MakeList(string wallpaperPath)
         {
-            DirectoryInfo root = new DirectoryInfo(wallpaperPath);
+            DirectoryInfo root = new(wallpaperPath);
             FileInfo[] fileInfos = root.GetFiles();
             foreach (FileInfo file in fileInfos)
             {
-                ToolStripItem item = new ToolStripMenuItem();
-                item.Text = file.Name;
-                item.Click += new EventHandler(wp_ItemClick);
+                ToolStripItem item = new ToolStripMenuItem
+                {
+                    Text = file.Name
+                };
+                item.Click += Wp_ItemClick;
                 switchToolStripMenuItem.DropDownItems.Add(item);
             }
         }
@@ -73,9 +103,11 @@ namespace VideoWallpaper
             int i = 0;
             foreach (var screen in Screen.AllScreens)
             {
-                ToolStripItem item = new ToolStripMenuItem();
-                item.Text = "��Ļ " + i;
-                item.Click += new EventHandler(ss_ItemClick);
+                ToolStripItem item = new ToolStripMenuItem
+                {
+                    Text = "屏幕 " + i
+                };
+                item.Click += Ss_ItemClick;
                 screens.Add(screen.Bounds);
                 i++;
                 screenToolStripMenuItem.DropDownItems.Add(item);
@@ -94,12 +126,13 @@ namespace VideoWallpaper
             }
         }
 
-        public void ss_ItemClick(object sender, EventArgs e)
+        public void Ss_ItemClick(object? sender, EventArgs e)
         {
-            ToolStripItem item = (ToolStripItem)sender;
+            ToolStripItem? item = sender as ToolStripItem;
+            if (item?.Text == null) return;
             int i = Int32.Parse(item.Text.Split(' ').Last());
             SwitchScreen(i);
-            File.WriteAllText(basePath + "\\mpv\\s.txt", i.ToString());
+            File.WriteAllText(basePath + "\\config\\s.txt", i.ToString());
         }
 
         public void SwitchScreen(int sid)
@@ -113,12 +146,16 @@ namespace VideoWallpaper
             Size = screens[sid].Size;
         }
 
-        async void wp_ItemClick(object sender, EventArgs e)
+        async void Wp_ItemClick(object? sender, EventArgs e)
         {
-            ToolStripItem item = (ToolStripItem)sender;
+            ToolStripItem? item = sender as ToolStripItem;
+            if (item?.Text == null) return;
             await Task.Delay(50);
-            player.LoadFile(basePath + "\\wallpaper\\" + item.Text);
-            File.WriteAllText(basePath + "\\mpv\\wp.txt", item.Text);
+            var media = new Media(_libVLC, new Uri(basePath + "\\wallpaper\\" + item.Text));
+            media.AddOption(":input-repeat=2147483647");
+            _mp.Play(media);
+            media.Dispose();
+            File.WriteAllText(basePath + "\\config\\wp.txt", item.Text);
         }
 
         public void Init()
@@ -129,9 +166,8 @@ namespace VideoWallpaper
                 return;
             }
 
-            IntPtr result = IntPtr.Zero;
-            // �� Program Manager ���ڷ��� 0x52c ��һ����Ϣ����ʱ����Ϊ0x3e8��1�룩��
-            _ = Win32.SendMessageTimeout(parentIntPtr, 0x52c, IntPtr.Zero, IntPtr.Zero, 0, 0x3e8, result);
+            // 向 Program Manager 窗口发送 0x52c 的一个消息，超时设置为0x3e8（1秒）。
+            _ = Win32.SendMessageTimeout(parentIntPtr, 0x52c, IntPtr.Zero, IntPtr.Zero, 0, 0x3e8, out IntPtr result);
 
             IntPtr workerwPtr = IntPtr.Zero;
             _ = Win32.EnumWindows((hWnd, lParam) =>
@@ -150,14 +186,14 @@ namespace VideoWallpaper
                 IntPtr shelldll_defview = Win32.FindWindowEx(parentIntPtr, IntPtr.Zero, "SHELLDLL_DefView", null);
                 if (shelldll_defview != IntPtr.Zero)
                 {
-                    // ��ȡ SHELLDLL_DefView ����Ĵ���
+                    // 获取 SHELLDLL_DefView 后面的窗口
                     uint GW_HWNDNEXT = 2;
                     IntPtr desktopHandle = Win32.GetWindow(shelldll_defview, GW_HWNDNEXT);
                     if (desktopHandle != IntPtr.Zero)
                     {
-                        StringBuilder className = new StringBuilder(256);
-                        Win32.GetClassName(desktopHandle, className, className.Capacity);
-                        if (className.ToString() == "WorkerW")
+                        char[] className = new char[256];
+                        int length = Win32.GetClassName(desktopHandle, className, 256);
+                        if (length > 0 && new string(className, 0, length) == "WorkerW")
                         {
                             workerwPtr = desktopHandle;
                         }
@@ -169,59 +205,82 @@ namespace VideoWallpaper
             Win32.SetParent(this.Handle, workerwPtr);
         }
 
-        private void siteToolStripMenuItem_Click(object sender, EventArgs e)
+        private void SiteToolStripMenuItem_Click(object sender, EventArgs e)
         {
             Process.Start(new ProcessStartInfo("https://meta.appinn.net/t/topic/40295/") { UseShellExecute = true });
         }
 
-        private void donateToolStripMenuItem_Click(object sender, EventArgs e)
+        private void DonateToolStripMenuItem_Click(object sender, EventArgs e)
         {
             Process.Start(new ProcessStartInfo("https://afdian.net/a/ifwz1729") { UseShellExecute = true });
         }
 
-        private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
+        private void AboutToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("С�糵\n���ߣ��Ա��׻���С��");
+            MessageBox.Show("小风车\n作者：吃爆米花的小熊");
         }
 
-        private void exitToolStripMenuItem_Click(object sender, EventArgs e)
+        private void ExitToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            player.Dispose();
             Close();
         }
 
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
-            player.Dispose();
+            _mp.Stop();
+            _mp.Dispose();
+            _libVLC.Dispose();
         }
 
-        private void autostartToolStripMenuItem_Click(object sender, EventArgs e)
+        private void AutostartToolStripMenuItem_Click(object sender, EventArgs e)
         {
             AutoRun();
         }
 
-        //������
-        private static void CreateShortcut(string lnkFilePath, string args = "")
+        //自启动
+        private static bool CreateShortcut(string lnkFilePath, string args = "")
         {
             var shellType = Type.GetTypeFromProgID("WScript.Shell");
-            dynamic shell = Activator.CreateInstance(shellType);
-            var shortcut = shell.CreateShortcut(lnkFilePath);
-            shortcut.TargetPath = Assembly.GetEntryAssembly().Location;
+            if (shellType == null) return false;
+            dynamic? shell = Activator.CreateInstance(shellType);
+            dynamic? shortcut = shell?.CreateShortcut(lnkFilePath);
+            if (shortcut == null) return false;
+            var entryAssembly = Assembly.GetEntryAssembly();
+            if (entryAssembly == null) return false;
+            shortcut.TargetPath = entryAssembly.Location;
             shortcut.Arguments = args;
             shortcut.WorkingDirectory = AppDomain.CurrentDomain.SetupInformation.ApplicationBase;
             shortcut.Save();
+            return true;
         }
 
         public async void AutoRun()
         {
-            CreateShortcut(basePath + "\\С�糵.lnk");
+            var success = CreateShortcut(basePath + "\\小风车.lnk");
+            if (!success)
+            {
+                MessageBox.Show("创建快捷方式失败", "创建失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
             await Task.Delay(125);
             string StartupPath = Environment.GetFolderPath(System.Environment.SpecialFolder.Startup);
-            if (!File.Exists(StartupPath + @"\С�糵.lnk"))
+            if (!File.Exists(StartupPath + @"\小风车.lnk"))
             {
-                File.Move(Directory.GetCurrentDirectory() + @"\С�糵.lnk", StartupPath + @"\С�糵.lnk");
-                MessageBox.Show("С�糵������Ϊ������");
+                File.Move(Directory.GetCurrentDirectory() + @"\小风车.lnk", StartupPath + @"\小风车.lnk");
             }
+            if (File.Exists(StartupPath + @"\小风车.lnk"))
+            {
+                MessageBox.Show("小风车已设置为自启动");
+            }
+            else
+            {
+                MessageBox.Show("小风车设置自启动失败", "设置失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void MainForm_SizeChanged(object sender, EventArgs e)
+        {
+            videoView1.Size = this.Size;
         }
     }
 }

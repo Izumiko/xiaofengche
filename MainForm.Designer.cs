@@ -1,4 +1,6 @@
-﻿namespace VideoWallpaper
+﻿using LibVLCSharp.WinForms;
+
+namespace VideoWallpaper
 {
     partial class MainForm
     {
@@ -40,7 +42,9 @@
             donateToolStripMenuItem = new ToolStripMenuItem();
             aboutToolStripMenuItem = new ToolStripMenuItem();
             exitToolStripMenuItem = new ToolStripMenuItem();
+            videoView1 = new VideoView();
             contextMenuStrip1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)videoView1).BeginInit();
             SuspendLayout();
             // 
             // notifyIcon1
@@ -61,7 +65,7 @@
             siteToolStripMenuItem.Name = "siteToolStripMenuItem";
             siteToolStripMenuItem.Size = new Size(122, 22);
             siteToolStripMenuItem.Text = "官网";
-            siteToolStripMenuItem.Click += siteToolStripMenuItem_Click;
+            siteToolStripMenuItem.Click += SiteToolStripMenuItem_Click;
             // 
             // screenToolStripMenuItem
             // 
@@ -85,28 +89,38 @@
             autostartToolStripMenuItem.Name = "autostartToolStripMenuItem";
             autostartToolStripMenuItem.Size = new Size(122, 22);
             autostartToolStripMenuItem.Text = "开机自启";
-            autostartToolStripMenuItem.Click += autostartToolStripMenuItem_Click;
+            autostartToolStripMenuItem.Click += AutostartToolStripMenuItem_Click;
             // 
             // donateToolStripMenuItem
             // 
             donateToolStripMenuItem.Name = "donateToolStripMenuItem";
             donateToolStripMenuItem.Size = new Size(122, 22);
             donateToolStripMenuItem.Text = "捐助";
-            donateToolStripMenuItem.Click += donateToolStripMenuItem_Click;
+            donateToolStripMenuItem.Click += DonateToolStripMenuItem_Click;
             // 
             // aboutToolStripMenuItem
             // 
             aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
             aboutToolStripMenuItem.Size = new Size(122, 22);
             aboutToolStripMenuItem.Text = "关于";
-            aboutToolStripMenuItem.Click += aboutToolStripMenuItem_Click;
+            aboutToolStripMenuItem.Click += AboutToolStripMenuItem_Click;
             // 
             // exitToolStripMenuItem
             // 
             exitToolStripMenuItem.Name = "exitToolStripMenuItem";
             exitToolStripMenuItem.Size = new Size(122, 22);
             exitToolStripMenuItem.Text = "退出";
-            exitToolStripMenuItem.Click += exitToolStripMenuItem_Click;
+            exitToolStripMenuItem.Click += ExitToolStripMenuItem_Click;
+            // 
+            // videoView1
+            // 
+            videoView1.BackColor = Color.Black;
+            videoView1.Dock = DockStyle.Fill;
+            videoView1.Location = new Point(0, 0);
+            videoView1.MediaPlayer = null;
+            videoView1.Name = "videoView1";
+            videoView1.Size = new Size(2586, 1626);
+            videoView1.TabIndex = 0;
             // 
             // MainForm
             // 
@@ -114,6 +128,7 @@
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = SystemColors.Control;
             ClientSize = new Size(1920, 1080);
+            Controls.Add(videoView1);
             FormBorderStyle = FormBorderStyle.None;
             Name = "MainForm";
             Opacity = 0D;
@@ -121,7 +136,9 @@
             StartPosition = FormStartPosition.Manual;
             Text = "VideoWallpaper";
             FormClosing += MainForm_FormClosing;
+            SizeChanged += MainForm_SizeChanged;
             contextMenuStrip1.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)videoView1).EndInit();
             ResumeLayout(false);
         }
 
@@ -137,5 +154,6 @@
         private ToolStripMenuItem aboutToolStripMenuItem;
         private ToolStripMenuItem exitToolStripMenuItem;
         private ToolStripMenuItem screenToolStripMenuItem;
+        private VideoView videoView1;
     }
 }

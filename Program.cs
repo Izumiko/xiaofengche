@@ -1,3 +1,7 @@
+using System.Runtime.CompilerServices;
+
+[assembly: DisableRuntimeMarshalling]
+
 namespace VideoWallpaper
 {
     internal static class Program

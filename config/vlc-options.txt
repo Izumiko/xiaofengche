@@ -1,0 +1,12 @@
+#关闭OSD显示
+--no-osd
+#静音
+--no-audio
+#硬件解码：自动：auto, 禁用：none
+--avcodec-hw=auto
+#禁用字幕、OSD渲染
+--no-spu
+#不在视频开头显示标题
+--no-video-title-show
+#不输出日志到控制台
+--quiet

@@ -3,34 +3,36 @@ using System.Text;
 
 namespace VideoWallpaper
 {
-    internal class Win32
+    internal partial class Win32
     {
-        [DllImport("user32.dll")]
-        public static extern IntPtr FindWindow(string className, string winName);
+        [LibraryImport("user32.dll", EntryPoint = "FindWindowW", StringMarshalling = StringMarshalling.Utf16)]
+        public static partial IntPtr FindWindow(string? className, string? winName);
 
-        [DllImport("user32.dll")]
-        public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam, uint fuFlag, uint timeout, IntPtr result);
+        [LibraryImport("user32.dll", EntryPoint = "SendMessageTimeoutW")]
+        public static partial IntPtr SendMessageTimeout(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam, uint fuFlag, uint timeout, out IntPtr result);
 
-        [DllImport("user32.dll")]
-        public static extern int SendMessage(IntPtr hWnd, uint msg, int wParam, int lParam);
+        [LibraryImport("user32.dll", EntryPoint = "SendMessageW")]
+        public static partial int SendMessage(IntPtr hWnd, uint msg, int wParam, int lParam);
 
-        [DllImport("user32.dll")]
-        public static extern bool EnumWindows(EnumWindowsProc proc, IntPtr lParam);
+        [LibraryImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static partial bool EnumWindows(EnumWindowsProc proc, IntPtr lParam);
         public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
-        [DllImport("user32.dll")]
-        public static extern IntPtr FindWindowEx(IntPtr hWndParent, IntPtr hWndChildAfter, string className, string winName);
+        [LibraryImport("user32.dll", EntryPoint = "FindWindowExW", StringMarshalling = StringMarshalling.Utf16)]
+        public static partial IntPtr FindWindowEx(IntPtr hWndParent, IntPtr hWndChildAfter, string? className, string? winName);
 
-        [DllImport("user32.dll")]
-        public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+        [LibraryImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static partial bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
-        [DllImport("user32.dll")]
-        public static extern IntPtr SetParent(IntPtr hWnd, IntPtr hParent);
+        [LibraryImport("user32.dll")]
+        public static partial IntPtr SetParent(IntPtr hWnd, IntPtr hParent);
 
-        [DllImport("user32.dll")]
-        public static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+        [LibraryImport("user32.dll", EntryPoint = "GetClassNameW")]
+        public static partial int GetClassName(IntPtr hWnd, [Out] char[] lpClassName, int nMaxCount);
 
-        [DllImport("user32.dll", SetLastError = true)]
-        public static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
+        [LibraryImport("user32.dll", SetLastError = true)]
+        public static partial IntPtr GetWindow(IntPtr hWnd, uint uCmd);
     }
 }
